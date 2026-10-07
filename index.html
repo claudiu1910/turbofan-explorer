@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en" class="story">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How a jet engine works · Turbofan Explorer</title>
+  <meta name="description" content="Suck, squeeze, bang, blow: scroll through a jet engine, then take the controls. An interactive 3D lesson." />
+  <meta name="theme-color" content="#241b3d" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <!-- Link previews. Sites that build previews want a full address for the image: once this is
+       hosted, change "share.jpg" below to its complete URL (https://…/share.jpg). -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="How a jet engine works" />
+  <meta property="og:description" content="Suck, squeeze, bang, blow: scroll through a jet engine in 3D, then take the controls and land the aircraft." />
+  <meta property="og:image" content="share.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body data-mode="story">
+  <!-- the 3D scene sits behind everything; in the story, scrolling moves it through the lesson -->
+  <canvas id="stage"></canvas>
+  <svg id="leaders" aria-hidden="true"></svg>
+  <div id="labels"></div>
+
+  <div id="progress" aria-hidden="true"><i></i></div>
+
+  <div id="topbar">
+    <div class="bar-row">
+      <div class="brand glass"><b>TURBOFAN</b> EXPLORER</div>
+      <button id="reset-view" class="glass btn">Reset view</button>
+    </div>
+    <div class="bar-row">
+      <nav id="modes" class="glass" role="tablist" aria-label="Mode">
+        <button role="tab" data-mode="story" class="on" aria-selected="true">Story</button>
+        <button role="tab" data-mode="explore" aria-selected="false">Explore</button>
+        <button role="tab" data-mode="play" aria-selected="false">Play</button>
+        <button role="tab" data-mode="aircraft" aria-selected="false">Aircraft</button>
+      </nav>
+      <button id="btn-more" class="glass btn" aria-expanded="false" aria-controls="tools" aria-label="More">⋯</button>
+      <div id="tools" class="hud-tools">
+        <button id="btn-watch" class="glass btn" aria-pressed="false"><span class="ico">▶</span> Watch</button>
+        <button id="btn-log" class="glass btn" aria-expanded="false" aria-controls="log">Log</button>
+      </div>
+    </div>
+  </div>
+
+  <nav id="phases" class="glass" aria-label="Engine cycle">
+    <span data-phase="suck">Suck</span><i></i>
+    <span data-phase="squeeze">Squeeze</span><i></i>
+    <span data-phase="bang">Bang</span><i></i>
+    <span data-phase="blow">Blow</span>
+  </nav>
+
+  <!-- the aircraft's own read-out, in place of the cycle pill while it lands -->
+  <div id="flight" class="glass" hidden>
+    <div><span>Speed</span><b id="fl-speed">–</b></div>
+    <div><span>Height</span><b id="fl-height">–</b></div>
+    <div><span>Gear</span><b id="fl-gear">Up</b></div>
+    <div><span>Flaps</span><b id="fl-flaps">Up</b></div>
+  </div>
+
+  <!-- shown while riding the air, in place of the cycle pill -->
+  <section id="ride-hud" class="glass" hidden aria-live="polite">
+    <div class="ride-top">
+      <span class="eyebrow">Riding the air</span>
+      <b id="ride-station">Inlet</b>
+      <button id="ride-exit" class="btn dark small">Exit</button>
+    </div>
+    <div class="ride-stats">
+      <div><span>Pressure</span><b id="ride-p">1 ×</b></div>
+      <div><span>Temperature</span><b id="ride-t">15 °C</b></div>
+      <div><span>Speed</span><b id="ride-v">160 m/s</b></div>
+    </div>
+    <div class="ride-bar"><i id="ride-fill"></i></div>
+  </section>
+
+  <div id="right-col">
+    <aside id="engine-controls" class="glass collapsed">
+      <button id="controls-toggle" aria-expanded="false">
+        <span>ENGINE CONTROLS</span><span class="plus">+</span>
+      </button>
+      <div class="controls-body">
+        <label>Rotation speed
+          <input id="ctl-spin" type="range" min="0" max="2" step="0.05" value="1" />
+        </label>
+        <label>Airflow density
+          <input id="ctl-flow" type="range" min="0" max="1" step="0.05" value="1" />
+        </label>
+        <div class="field">
+          <span>Graphics</span>
+          <div id="ctl-quality" class="seg full3">
+            <button data-q="high" class="on">Full</button>
+            <button data-q="medium">Balanced</button>
+            <button data-q="low">Light</button>
+          </div>
+        </div>
+        <div class="checks">
+          <label class="check"><input id="ctl-labels" type="checkbox" checked /> Labels</label>
+          <label class="check"><input id="ctl-aircraft" type="checkbox" checked /> Aircraft</label>
+          <label class="check"><input id="ctl-bloom" type="checkbox" checked /> Glow</label>
+          <label class="check"><input id="ctl-graph" type="checkbox" /> Graph</label>
+          <label class="check"><input id="ctl-figure" type="checkbox" /> Scale figure</label>
+        </div>
+      </div>
+    </aside>
+
+    <aside id="info-card" class="glass card" hidden aria-live="polite">
+      <header>
+        <span id="info-step" class="eyebrow"></span>
+        <button id="info-close" class="x" aria-label="Close details">×</button>
+      </header>
+      <h2 id="info-name"></h2>
+      <p id="info-what"></p>
+      <dl id="info-stats"></dl>
+      <h4>Made of</h4>
+      <p id="info-made"></p>
+      <footer>
+        <button id="info-prev" class="btn dark">← Previous</button>
+        <button id="info-next" class="btn dark">Next →</button>
+      </footer>
+      <p class="fine">Typical figures for a large airliner engine, rounded.</p>
+    </aside>
+
+    <aside id="compare-card" class="glass card" hidden>
+      <header>
+        <span class="eyebrow">Turbojet vs turbofan</span>
+        <button id="compare-close" class="x" aria-label="Close comparison">×</button>
+      </header>
+      <h2 id="compare-title"></h2>
+      <p id="compare-body"></p>
+      <div id="compare-rows"></div>
+      <p class="fine" id="compare-note"></p>
+    </aside>
+  </div>
+
+  <aside id="explore-panel" class="glass">
+    <section>
+      <h3>Throttle <output id="ex-throttle-out">Cruise</output></h3>
+      <input id="ex-throttle" type="range" min="0" max="100" step="1" value="75" aria-label="Throttle" />
+      <div class="ends"><span>Idle</span><span>Take-off</span></div>
+      <div id="gauges">
+        <div class="gauge" data-g="n1"><svg viewBox="0 0 64 46" aria-hidden="true"><path class="track" /><path class="value" /></svg><b class="val">–</b><span>Fan speed</span></div>
+        <div class="gauge" data-g="n2"><svg viewBox="0 0 64 46" aria-hidden="true"><path class="track" /><path class="value" /></svg><b class="val">–</b><span>Core speed</span></div>
+        <div class="gauge hot" data-g="egt"><svg viewBox="0 0 64 46" aria-hidden="true"><path class="track" /><path class="value" /></svg><b class="val">–</b><span>Exhaust temp</span></div>
+        <div class="tile" data-g="thrust"><span>Thrust</span><b class="val">–</b></div>
+        <div class="tile" data-g="fuel"><span>Fuel</span><b class="val">–</b></div>
+      </div>
+    </section>
+    <section>
+      <h3>View</h3>
+      <label>Cutaway
+        <input id="ex-cut" type="range" min="0" max="100" step="1" value="50" />
+      </label>
+      <label>Pull apart
+        <input id="ex-explode" type="range" min="0" max="100" step="1" value="0" />
+      </label>
+      <label class="check"><input id="ex-xray" type="checkbox" /> X-ray</label>
+    </section>
+    <section>
+      <h3>Engine</h3>
+      <div class="seg full" id="ex-type">
+        <button data-type="fan" class="on">Turbofan</button>
+        <button data-type="jet">Turbojet</button>
+      </div>
+      <label class="check"><input id="ex-reverse" type="checkbox" /> Thrust reverser</label>
+      <label class="check"><input id="ex-burner" type="checkbox" /> Afterburner <small>as on fighter jets</small></label>
+    </section>
+    <section>
+      <h3>Altitude <output id="ex-alt-out">11 km</output></h3>
+      <input id="ex-alt" type="range" min="0" max="12" step="0.25" value="11" aria-label="Altitude" />
+      <div class="ends"><span>Runway</span><span>12 km</span></div>
+      <p class="fine" id="ex-air"></p>
+    </section>
+    <section>
+      <h3>Ride the air</h3>
+      <div class="row2">
+        <button id="ride-core" class="btn dark">Through the core</button>
+        <button id="ride-bypass" class="btn dark">Around the core</button>
+      </div>
+    </section>
+    <p class="fine">Click any part of the engine for details.</p>
+  </aside>
+
+  <aside id="aircraft-panel" class="glass">
+    <section>
+      <h3>Look at</h3>
+      <div class="seg grid2" id="ac-view">
+        <button data-view="overview" class="on">Whole aircraft</button>
+        <button data-view="wing">Wing and wheels</button>
+        <button data-view="cabin">Cabin</button>
+        <button data-view="cockpit">Flight deck</button>
+      </div>
+    </section>
+    <section data-for="overview">
+      <h3>What the engines power</h3>
+      <label class="check sys air"><input id="ac-air" type="checkbox" checked /> <i></i>Cabin air</label>
+      <label class="check sys hyd"><input id="ac-hyd" type="checkbox" checked /> <i></i>Hydraulics</label>
+      <label class="check sys elec"><input id="ac-elec" type="checkbox" checked /> <i></i>Electricity</label>
+      <div class="chips" data-cards="cabinAir,hydraulic,electric"></div>
+      <p class="fine">The routes are a sketch, not the real pipe runs.</p>
+    </section>
+    <section data-for="wing" hidden>
+      <h3>Set it up to land</h3>
+      <label class="check"><input id="ac-gear" type="checkbox" /> Landing gear down</label>
+      <label>Slats and flaps <output id="ac-flaps-out">Up</output>
+        <input id="ac-flaps" type="range" min="0" max="100" step="1" value="0" />
+      </label>
+      <label class="check"><input id="ac-ground" type="checkbox" /> On the runway</label>
+      <label class="check"><input id="ac-spoilers" type="checkbox" /> Spoilers</label>
+      <label class="check"><input id="ac-reverse" type="checkbox" /> Thrust reversers</label>
+      <button id="ac-land" class="btn dark wide"><span class="ico">▶</span> Watch the landing</button>
+      <div class="chips" data-cards="gear,flaps,spoilers,reverser"></div>
+    </section>
+    <section data-for="cabin" hidden>
+      <h3>Inside the fuselage</h3>
+      <label>Open the skin
+        <input id="ac-cut" type="range" min="0" max="100" step="1" value="100" />
+      </label>
+      <label class="check sys air"><input id="ac-flow" type="checkbox" checked /> <i></i>Show the air</label>
+      <div class="chips" data-cards="cabinAir,fuselage"></div>
+    </section>
+    <section data-for="cockpit" hidden>
+      <h3>The pilot's view of the engine</h3>
+      <p class="hint">Move the thrust lever and watch the engine answer.</p>
+      <div class="chips" data-cards="cockpit,electric"></div>
+    </section>
+  </aside>
+
+  <!-- markers on the whole-aircraft view: each one opens a closer look -->
+  <div id="hotspots"></div>
+
+  <section id="graph" class="glass" hidden aria-label="Pressure, temperature and speed along the engine"></section>
+
+  <section id="play-panel" class="glass">
+    <div id="play-menu">
+      <h2>Test yourself</h2>
+      <p>Four short games on the cut-open engine.</p>
+      <div class="games">
+        <button id="play-quiz" class="btn dark"><b>Name the part</b><small>Three rounds: jobs, materials, numbers</small></button>
+        <button id="play-build" class="btn dark"><b>Build the engine</b><small>Drag the pieces onto the shaft</small></button>
+        <button id="play-start" class="btn dark"><b>Start the engine</b><small>Four switches, in the right order</small></button>
+        <button id="play-fault" class="btn dark"><b>Find the fault</b><small>Read the symptoms, name the part</small></button>
+      </div>
+    </div>
+    <div id="quiz" hidden>
+      <div class="meta">
+        <span id="quiz-count"></span>
+        <span class="seg mini" id="quiz-round">
+          <button data-round="jobs" class="on">Jobs</button>
+          <button data-round="materials">Materials</button>
+          <button data-round="numbers">Numbers</button>
+        </span>
+        <span id="quiz-score"></span>
+      </div>
+      <p id="quiz-ask" class="ask"></p>
+      <p id="quiz-feedback" class="feedback" aria-live="polite"></p>
+      <div class="row">
+        <button id="quiz-next" class="btn dark">Next</button>
+        <button id="quiz-quit" class="btn outline">Quit</button>
+      </div>
+    </div>
+    <div id="build" hidden>
+      <div class="meta">
+        <span id="build-count"></span>
+        <span class="seg mini" id="build-level">
+          <button data-level="1" class="on">7 pieces</button>
+          <button data-level="2">9 pieces, no hints</button>
+        </span>
+        <span id="build-time"></span>
+      </div>
+      <p id="build-msg" class="ask"></p>
+      <p id="build-feedback" class="feedback" aria-live="polite"></p>
+      <div class="row">
+        <button id="build-hint" class="btn dark">Hint</button>
+        <button id="build-restart" class="btn dark">Shuffle</button>
+        <button id="build-quit" class="btn outline">Quit</button>
+      </div>
+    </div>
+    <div id="startgame" hidden>
+      <div class="meta"><span>Start the engine</span><span id="start-time"></span></div>
+      <p id="start-msg" class="ask"></p>
+      <p id="start-feedback" class="feedback" aria-live="polite"></p>
+      <div class="row">
+        <button id="start-restart" class="btn dark">Start again</button>
+        <label class="check"><input id="start-coach" type="checkbox" checked /> Coach me</label>
+        <button id="start-quit" class="btn outline">Quit</button>
+      </div>
+    </div>
+    <div id="faultgame" hidden>
+      <div class="meta"><span id="fault-count"></span><span id="fault-score"></span></div>
+      <p id="fault-ask" class="ask"></p>
+      <p id="fault-feedback" class="feedback" aria-live="polite"></p>
+      <div class="row">
+        <button id="fault-next" class="btn dark">Next</button>
+        <button id="fault-quit" class="btn outline">Quit</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- the flight deck's view of the engine: its display, the start switches, the thrust lever -->
+  <section id="cockpit" class="glass" hidden aria-label="Flight deck engine panel">
+    <div class="ck-screen">
+      <div class="ck-head"><span>ENGINE</span><b id="ck-status"></b></div>
+      <div class="ck-dials">
+        <div class="ck-dial" data-d="n1"></div>
+        <div class="ck-dial" data-d="egt"></div>
+        <div class="ck-rows">
+          <div><span>N2 %</span><b id="ck-n2">–</b></div>
+          <div><span>Fuel kg/h</span><b id="ck-ff">–</b></div>
+          <div><span>Vibration</span><b id="ck-vib">–</b></div>
+        </div>
+      </div>
+      <div class="ck-warn" id="ck-warn" aria-live="polite"></div>
+    </div>
+    <div class="ck-switches" id="ck-switches" hidden>
+      <button class="ck-sw" data-sw="bleed" aria-pressed="false"><i></i><span>Bleed air</span></button>
+      <button class="ck-sw" data-sw="starter" aria-pressed="false"><i></i><span>Starter</span></button>
+      <button class="ck-sw" data-sw="ign" aria-pressed="false"><i></i><span>Ignition</span></button>
+      <button class="ck-sw" data-sw="fuel" aria-pressed="false"><i></i><span>Fuel</span></button>
+    </div>
+    <div class="ck-lever" id="ck-lever">
+      <div class="ck-marks" aria-hidden="true">
+        <span style="top: 0%">TO/GA</span>
+        <span style="top: 18%">Climb</span>
+        <span style="top: 72%">Idle</span>
+        <span style="top: 100%">Max reverse</span>
+      </div>
+      <div class="ck-track" id="ck-track" role="slider" tabindex="0" aria-label="Thrust lever" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="50">
+        <div class="ck-slot"></div>
+        <div class="ck-knob" id="ck-knob"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- the flight log: what this visitor has done, kept in their own browser -->
+  <div id="log" hidden role="dialog" aria-modal="true" aria-labelledby="log-title">
+    <div class="log-sheet glass">
+      <header>
+        <h2 id="log-title">Flight log</h2>
+        <button id="log-close" class="x" aria-label="Close the flight log">×</button>
+      </header>
+      <p class="log-sub"><span id="log-count"></span>. Kept on this device only.</p>
+      <div class="log-track"><i id="log-bar"></i></div>
+      <div id="log-list"></div>
+      <footer>
+        <input id="log-name" type="text" maxlength="40" placeholder="Your name, for the certificate" aria-label="Your name, for the certificate" />
+        <button id="log-save" class="btn dark">Save certificate</button>
+        <button id="log-clear" class="btn outline">Clear</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="tooltip" hidden></div>
+  <div id="toast" class="glass" role="status" hidden></div>
+
+  <div id="caption" class="glass hide"></div>
+
+  <footer id="transport" class="glass">
+    <div class="row">
+      <button id="btn-play" class="btn dark"><span class="ico">❚❚</span><span class="txt">Pause</span></button>
+      <div id="film-pick" class="seg" role="group" aria-label="Film">
+        <button data-film="engine" class="on">The engine</button>
+        <button data-film="aircraft">The aircraft</button>
+      </div>
+      <span id="time-readout">0.0 / 30 s</span>
+      <button id="btn-stop" class="btn dark square" aria-label="Stop"><i></i></button>
+      <button id="btn-follow" class="btn outline active">Follow camera</button>
+      <div id="speed" class="seg">
+        <button data-speed="0.5">0.5×</button>
+        <button data-speed="1" class="on">1×</button>
+        <button data-speed="1.5">1.5×</button>
+      </div>
+    </div>
+    <div id="scrub">
+      <div class="track"><div class="fill"></div></div>
+      <div class="ticks"></div>
+      <div class="knob"></div>
+      <div class="marks"></div>
+    </div>
+  </footer>
+
+  <!-- ───────────── the story: the page a visitor lands on ───────────── -->
+  <div id="story">
+    <header class="hero">
+      <p class="eyebrow">An interactive lesson</p>
+      <h1>How a jet engine works</h1>
+      <p class="lede">Suck, squeeze, bang, blow. Scroll to take one apart.</p>
+      <div class="hero-actions">
+        <button class="btn ghost" data-go="tour"><span class="ico">▶</span> Or watch it as a 30-second film</button>
+      </div>
+      <div class="scroll-cue" aria-hidden="true"><span></span>Scroll</div>
+    </header>
+
+    <main id="steps">
+      <section class="step" data-film="engine" data-from="0" data-to="4.4">
+        <article class="glass copy">
+          <p class="eyebrow">01 · The engine</p>
+          <h2>A giant fan, driven by a jet engine at its core</h2>
+          <p>This is a turbofan. Almost every airliner flying today hangs two or four of them under its wings.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="4.4" data-to="9.2">
+        <article class="glass copy">
+          <p class="eyebrow">02 · Cut it open</p>
+          <h2>Air in at the front, fire in the middle, thrust out of the back</h2>
+          <p>Slice it down the middle and the layout is simple. Everything is arranged along one line, in the order the air meets it.</p>
+          <div class="try">
+            <label for="try-cut">Try it: slice the engine yourself</label>
+            <input id="try-cut" type="range" min="0" max="100" value="0" data-try="cut" />
+          </div>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="9.2" data-to="11.1">
+        <article class="glass copy">
+          <p class="eyebrow">03 · Two shafts</p>
+          <h2>One shaft spins inside the other</h2>
+          <p>The inner shaft joins the fan to the turbine at the very back. The outer one joins the main compressor to its own turbine and turns about four times faster.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="11.1" data-to="15.4">
+        <article class="glass copy">
+          <p class="eyebrow suck">04 · Suck</p>
+          <h2>The fan pulls in a huge mass of air</h2>
+          <p>Over a tonne every second at take-off. Most of it never enters the core. It goes around, through the bypass duct, and makes most of the thrust.</p>
+          <div class="try">
+            <label for="try-throttle">Try it: push the throttle <output id="try-throttle-out"></output></label>
+            <input id="try-throttle" type="range" min="0" max="100" value="75" data-try="throttle" />
+          </div>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="15.4" data-to="17.4">
+        <article class="glass copy">
+          <p class="eyebrow squeeze">05 · Squeeze</p>
+          <h2>Ring after ring of blades packs the air 40 times tighter</h2>
+          <p>Squeezing heats it to around 600 °C before any fuel has been added.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="17.4" data-to="19.3">
+        <article class="glass copy">
+          <p class="eyebrow bang">06 · Bang</p>
+          <h2>Fuel burns without stopping</h2>
+          <p>The gas leaves at more than 1,500 °C. That is hotter than the melting point of the turbine blades it is about to hit.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="19.3" data-to="23">
+        <article class="glass copy">
+          <p class="eyebrow blow">07 · Blow</p>
+          <h2>Hot gas spins the turbines, then blasts out of the back</h2>
+          <p>The blades survive with cooling air and heat-resistant coatings. The turbines drive the compressor and the fan, so the engine keeps itself running.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="engine" data-from="23" data-to="30">
+        <article class="glass copy">
+          <p class="eyebrow">08 · All at once</p>
+          <h2>Suck, squeeze, bang, blow: all happening at the same time</h2>
+          <p>Pull the engine apart and every piece has one job in that chain. The push backwards on the air is a push forwards on the aircraft.</p>
+          <div class="try">
+            <label for="try-explode">Try it: pull it apart, put it back</label>
+            <input id="try-explode" type="range" min="0" max="100" value="0" data-try="explode" />
+          </div>
+        </article>
+      </section>
+      <!-- an opaque band between the two films: the scene changes behind it -->
+      <section class="interlude">
+        <div>
+          <p class="eyebrow">Part two</p>
+          <h2>What the engines power</h2>
+          <p>Thrust is only the start. Follow the same four engines through one landing.</p>
+        </div>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="0" data-to="4.6">
+        <article class="glass copy">
+          <p class="eyebrow">09 · More than thrust</p>
+          <h2>Four engines power everything else on board</h2>
+          <p>Each one also turns a generator and a hydraulic pump, and gives up some of its compressed air. Lights, controls, wheels and the air in the cabin all run on that.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="4.6" data-to="10.9">
+        <article class="glass copy">
+          <p class="eyebrow">10 · The air you breathe</p>
+          <h2>Cabin air comes from the compressors</h2>
+          <p>Outside it is about −55 °C and too thin to breathe. Air bled from the engines is cooled in the belly, piped in along the ceiling, and let out at the back at just the rate that holds the pressure.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="10.9" data-to="16.3">
+        <article class="glass copy">
+          <p class="eyebrow">11 · Wheels down</p>
+          <h2>Hydraulic pressure swings ten wheels into the wind</h2>
+          <p>Pumps on the engines keep oil at about 200 times atmospheric pressure. It opens the doors, swings the legs down and locks them, in about fifteen seconds.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="16.3" data-to="20.2">
+        <article class="glass copy">
+          <p class="eyebrow">12 · A different wing</p>
+          <h2>Slats and flaps reshape the wing to fly slowly</h2>
+          <p>A wing made for 900 km/h cannot hold the aircraft up at landing speed. Slats slide forward, flaps slide back and down, and the wing becomes bigger and more curved.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="20.2" data-to="23.6">
+        <article class="glass copy">
+          <p class="eyebrow">13 · Touchdown</p>
+          <h2>About 260 km/h, on eight tyres</h2>
+          <p>The engines are at idle. The main wheels touch first, spin up from nothing in a puff of smoke, and the nose is lowered after them.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="23.6" data-to="27.6">
+        <article class="glass copy">
+          <p class="eyebrow">14 · Stopping</p>
+          <h2>Spoilers kill the lift, reversers throw the air forwards</h2>
+          <p>Panels flip up on the wing so the weight sits on the wheels and the brakes can bite. The engines' cowls slide back and the fan air is turned to push against the motion.</p>
+        </article>
+      </section>
+
+      <section class="step" data-film="aircraft" data-from="27.6" data-to="32">
+        <article class="glass copy">
+          <p class="eyebrow">15 · Walking pace</p>
+          <h2>Half a minute from flying to taxiing</h2>
+          <p>Every step of it ran on power taken from the engines: air, oil pressure, electricity and, at the end, their thrust turned around.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="outro">
+      <h2>Now take the controls</h2>
+      <p>Move the throttle, click any part to read about it, ride a parcel of air through the core, put the engine back together, or set the aircraft up to land.</p>
+      <div class="outro-actions">
+        <button class="btn big" data-go="explore">Explore the engine</button>
+        <button class="btn big alt" data-go="play">Play the games</button>
+        <button class="btn big alt" data-go="aircraft">Tour the aircraft</button>
+      </div>
+      <button class="btn link" data-scroll=".making">How it was made ↓</button>
+    </footer>
+
+    <section class="making" id="making">
+      <div class="making-inner">
+        <p class="eyebrow">Behind it</p>
+        <h2>How it was made</h2>
+        <p class="lede">It began as a recreation of a thirty-second demo and grew into a short course on how an airliner works. Everything above is drawn live in your browser: there is no video on this page.</p>
+
+        <div class="making-grid">
+          <article>
+            <h3>No model files</h3>
+            <p>The engine, the aircraft, the cabin and the runway are built from code as the page loads: surfaces of revolution, twisted blades, extruded sections. The only pictures are a photograph of the sky and the livery artwork.</p>
+          </article>
+          <article>
+            <h3>One trick for every cutaway</h3>
+            <p>Each wall is a closed shell. A clipping plane slices it, and a second copy of the shell draws only its inside faces in flat orange. Wherever the cut passes through metal, you see a section.</p>
+          </article>
+          <article>
+            <h3>A script, not a recording</h3>
+            <p>Both films are functions of time and nothing else. The same code plays them, scrubs them, and lets your scrolling drive them, so the story and the films can never drift apart.</p>
+          </article>
+          <article>
+            <h3>Numbers you can trust the shape of</h3>
+            <p>Gauges, graphs and cards run on a small model of a large airliner engine. The figures are typical and rounded, not one real engine: right in size and in how they move together.</p>
+          </article>
+        </div>
+
+        <div class="making-shots">
+          <figure><img src="making/before.jpg" alt="The first version: a flat-lit engine under a wing" loading="lazy" width="800" height="444" /><figcaption>First pass: the shapes, the cut and the timing.</figcaption></figure>
+          <figure><img src="making/after.jpg" alt="The same view with a dusk sky, shadows and airline livery" loading="lazy" width="1280" height="710" /><figcaption>Look pass: a real sky, shadows, livery, a lens.</figcaption></figure>
+          <figure><img src="making/cabin.jpg" alt="The fuselage cut open over the cabin, with air drawn flowing through it" loading="lazy" width="1280" height="800" /><figcaption>Then the rest of the aircraft, system by system.</figcaption></figure>
+          <figure><img src="making/landing.jpg" alt="The aircraft a moment before touchdown on a lit runway" loading="lazy" width="1280" height="800" /><figcaption>And one landing to tie it together.</figcaption></figure>
+        </div>
+
+        <p class="credit">
+          Concept after the Turbofan Explorer demo by @techartist_. Built with Three.js and Vite, working with Claude Code; look development with Claude Design.
+          Sky: Belfast Sunset (Pure Sky) by Dimitrios Savva and Jarod Guest, Poly Haven, CC0.
+        </p>
+        <button class="btn link" data-scroll=".hero">Back to the top ↑</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="loading"><div>Preparing turbofan…</div></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+/* The scroll-driven story: the page a visitor lands on. Shares tokens with style.css.
+   `html.story` is set only while the story is showing; in every other mode the page is one fixed
+   screen and the story's sections are gone. */
+
+/* The viewport scrolls; the body must not become a scroll container or the sticky copy stops sticking. */
+html.story {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+html.story body {
+  height: auto;
+  overflow: visible;
+}
+/* scrolling passes straight through the picture */
+html.story #stage { touch-action: pan-y; pointer-events: none; }
+
+#story { display: none; }
+body.story-end #phases, body.story-end #flight { display: none; }
+html.story #story { display: block; }
+/* the hands-on furniture waits its turn */
+html.story #reset-view,
+html.story #engine-controls { display: none; }
+
+#progress {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9;
+  background: rgba(255, 255, 255, 0.08);
+}
+html.story #progress { display: block; }
+#progress i { display: block; height: 100%; width: 0; background: var(--suck); }
+
+.hero,
+.outro {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 10px;
+  padding: 0 clamp(20px, 6vw, 88px) clamp(56px, 12vh, 120px);
+}
+/* a soft scrim so the title reads over the bright cloud deck */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(30, 22, 56, 0.6), rgba(30, 22, 56, 0) 58%),
+    linear-gradient(0deg, rgba(30, 22, 56, 0.45), rgba(30, 22, 56, 0) 45%);
+  pointer-events: none;
+}
+.hero h1 {
+  margin: 0;
+  max-width: 13ch;
+  font-size: clamp(40px, 7vw, 92px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 30px rgba(20, 12, 44, 0.45);
+}
+.hero .lede {
+  margin: 4px 0 0;
+  max-width: 32ch;
+  font-size: clamp(16px, 1.6vw, 21px);
+  line-height: 1.4;
+  color: rgba(243, 238, 251, 0.9);
+  text-shadow: 0 1px 16px rgba(20, 12, 44, 0.5);
+}
+.hero .eyebrow { color: rgba(243, 238, 251, 0.85); }
+.hero-actions { margin-top: 10px; }
+.btn.ghost {
+  padding: 10px 16px;
+  font-size: 13.5px;
+  background: rgba(22, 16, 44, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.btn.ghost:hover { background: rgba(22, 16, 44, 0.62); border-color: rgba(255, 255, 255, 0.5); }
+.scroll-cue {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(243, 238, 251, 0.85);
+}
+.scroll-cue span {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(var(--ink), transparent);
+  animation: cue 1.8s ease-in-out infinite;
+  transform-origin: top;
+}
+@keyframes cue {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+#steps { position: relative; z-index: 2; }
+.step {
+  /* tall enough that each beat of the lesson gets real scroll distance */
+  min-height: 150vh;
+  padding: 0 clamp(16px, 5vw, 72px);
+  pointer-events: none;
+}
+.step .copy {
+  position: sticky;
+  top: 30vh;
+  width: min(390px, 100%);
+  padding: 20px 22px 22px;
+  border-radius: 16px;
+  background: rgba(26, 21, 44, 0.74);
+  pointer-events: auto;
+  opacity: 0.25;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.step.on .copy { opacity: 1; transform: none; }
+.step h2 {
+  margin: 8px 0 10px;
+  font-size: clamp(21px, 2.1vw, 28px);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+}
+.step p { margin: 0; font-size: 15px; line-height: 1.55; color: rgba(243, 238, 251, 0.86); }
+.step .eyebrow.suck { color: var(--suck); }
+.step .eyebrow.squeeze { color: var(--squeeze); }
+.step .eyebrow.bang { color: var(--bang); }
+.step .eyebrow.blow { color: var(--blow); }
+
+/* an opaque band between two films: the scene behind it changes while it covers the screen */
+.interlude {
+  position: relative;
+  z-index: 2;
+  min-height: 140vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 24px;
+  background: linear-gradient(rgba(29, 22, 56, 0), #1d1638 32%, #1d1638 68%, rgba(29, 22, 56, 0));
+}
+.interlude h2 { margin: 8px 0 12px; font-size: clamp(30px, 4.4vw, 56px); letter-spacing: -0.02em; }
+.interlude p { margin: 0 auto; max-width: 44ch; font-size: 16px; line-height: 1.55; color: rgba(243, 238, 251, 0.86); }
+
+/* a hands-on moment inside a step */
+.try {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  gap: 9px;
+}
+.try label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--suck);
+}
+.try output { font-weight: 500; color: var(--ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step:not(.on) .try { pointer-events: none; }
+
+.outro {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  background: linear-gradient(rgba(26, 20, 48, 0), rgba(26, 20, 48, 0.82) 38%);
+  padding-top: 30vh;
+}
+.outro h2 { margin: 0; font-size: clamp(30px, 4.4vw, 56px); letter-spacing: -0.02em; }
+.outro p { margin: 0; max-width: 46ch; font-size: 16px; line-height: 1.55; color: rgba(243, 238, 251, 0.86); }
+.outro-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.btn.big { padding: 14px 22px; font-size: 15px; font-weight: 600; background: #f3eefb; color: #241b3d; border: 0; }
+.btn.big:hover { background: #fff; }
+.btn.big.alt { background: rgba(255, 255, 255, 0.08); color: var(--ink); border: 1px solid rgba(255, 255, 255, 0.4); padding: 13px 21px; }
+.btn.big.alt:hover { background: rgba(255, 255, 255, 0.16); }
+.outro .credit { margin-top: 36px; font-size: 12px; color: var(--ink-dim); }
+
+.btn.link { background: none; border: 0; color: var(--ink-dim); font-size: 13px; margin-top: 26px; padding: 6px 4px; }
+.btn.link:hover { color: var(--ink); }
+
+/* how it was made: a plain page over the scene, for whoever scrolls past the end */
+.making {
+  position: relative;
+  z-index: 3;
+  background: #1b1533;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: clamp(56px, 9vh, 110px) clamp(20px, 6vw, 88px) 64px;
+}
+.making-inner { max-width: 1080px; margin: 0 auto; }
+.making h2 { margin: 6px 0 14px; font-size: clamp(30px, 4.4vw, 54px); letter-spacing: -0.02em; }
+.making .lede { margin: 0; max-width: 62ch; font-size: 17px; line-height: 1.6; color: rgba(243, 238, 251, 0.88); }
+.making-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 34px; }
+.making-grid article { padding: 18px 20px 20px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.07); }
+.making-grid h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.making-grid p { margin: 0; font-size: 14px; line-height: 1.6; color: rgba(243, 238, 251, 0.8); }
+.making-shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 14px; }
+.making-shots figure { margin: 0; }
+.making-shots img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: #2a2146; }
+.making-shots figcaption { margin-top: 7px; font-size: 12px; color: var(--ink-dim); }
+.making .credit { margin: 34px 0 0; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: var(--ink-dim); }
+
+@media (max-width: 760px) {
+  .making-grid, .making-shots { grid-template-columns: 1fr; }
+  /* the cycle pill would crowd the title; the step cards carry the words instead */
+  html.story #phases { display: none; }
+  /* the card rides along the bottom of the screen: it has to sit at the end of its section for
+     `bottom` to hold it there while the section scrolls past */
+  .step { padding: 0 12px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .step .copy { top: auto; bottom: 18px; width: 100%; padding: 16px 18px 18px; }
+  .step h2 { font-size: 20px; }
+  .step p { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.story { scroll-behavior: auto; }
+  .scroll-cue span { animation: none; }
+  .step .copy { transition: none; }
+}

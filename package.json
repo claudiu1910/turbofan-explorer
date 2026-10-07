@@ -1,0 +1,16 @@
+{
+  "name": "turbofan-explorer",
+  "version": "1.0.0",
+  "description": "A turbofan engine and its airliner, modelled in code with Three.js and made into an interactive lesson",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.186.1",
+    "vite": "^8.3.3"
+  }
+}

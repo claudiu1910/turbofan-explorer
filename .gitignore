@@ -1,0 +1,11 @@
+# dependencies and build output
+node_modules/
+dist/
+
+# local working files: backups of earlier versions, the Claude Design export, tool settings
+docs/archive/
+docs/claude-design-export/
+docs/claude-design-brief.md
+.claude/
+
+.DS_Store
