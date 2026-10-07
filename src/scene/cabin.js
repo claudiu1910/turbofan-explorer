@@ -33,7 +33,9 @@ export const CABIN_CLIP = { clippingPlanes: cabinPlanes, clipIntersection: true,
 
 /** @param {number} k 0 = skin whole, 1 = fully opened */
 export function setCabinCut(k) {
-  const d = CABIN.closed + (CABIN.open - CABIN.closed) * k;
+  // The planes are fixed in the world while the aircraft pitches up to land, which lifts the nose
+  // through the "closed" position. So when nothing is to be cut, move the plane right out of reach.
+  const d = k < 0.004 ? 1e4 : CABIN.closed + (CABIN.open - CABIN.closed) * k;
   cutPlane.constant = n.y * FUSE_Y + n.z * FUSE_Z + d;
 }
 setCabinCut(0);

@@ -39,8 +39,10 @@ of what was asked, what was decided and where things live.
 - **Cockpit.** A 2D instrument panel (thrust lever, engine display, start switches) over the running
   cutaway engine. The "Start the engine" game uses the same panel.
 - **Sound and narration** were built (synthesised engine sound, a narrator using the device voice)
-  and then removed on 2026-10-07 at the user's request: they did not sound good enough. Do not
-  bring them back unprompted. The project is meant first of all as a 3D modelling piece.
+  and then removed on 2026-10-07: they did not sound good enough. The project is first of all a 3D
+  modelling piece, so it stays silent.
+- **Hosting.** GitHub Pages, built and published by `.github/workflows/deploy.yml` on every push
+  to `main`. Live at https://claudiu1910.github.io/turbofan-explorer/.
 - **Numbers** stay illustrative and rounded, as before.
 
 ## Status
@@ -76,9 +78,11 @@ of what was asked, what was decided and where things live.
 - `src/ui/log.js`: the flight log (localStorage key `turbofan-explorer-log-v1`) and certificate.
 - `engineAt(throttle, { jet, reverse, burner, altitude })` and `airAt(km)` in `src/model.js`.
 
-## Not verified
+## Checked, and not
 
-- Real frame rate: the preview pane was hidden throughout, so smoothness was never measured. Each
-  step of the app cost roughly 18–26 ms of main-thread time at Full quality there.
+- Frame rate, measured 2026-10-07 in Chrome on an Apple M2 with the picture at 2880 × 1800: about
+  30 to 45 frames a second on the Full preset, 60 at phone size. Slower machines rely on the
+  automatic step-down.
 - Nothing was run on a real phone or tablet (only emulated sizes).
-- `og:image` needs the site's full address once it is hosted.
+- The pictures in `docs/screenshots/` come from real Chrome driving the running site, so they show
+  what a visitor sees.
